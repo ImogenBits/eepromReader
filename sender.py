@@ -130,11 +130,11 @@ def main():
 
                 receivedBytes = 0
 
-                receivedPage = link.rx_obj(int, 4, receivedBytes)
+                receivedPage = link.rx_obj(int, obj_byte_size=4, start_pos=receivedBytes)
                 receivedBytes += 4
-                receivedLen = link.rx_obj(int, 4, receivedBytes)
+                receivedLen = link.rx_obj(int, obj_byte_size=4, start_pos=receivedBytes)
                 receivedBytes += 4
-                receivedList = link.rx_obj(list, receivedLen, receivedBytes, "B")
+                receivedList = link.rx_obj(list, obj_byte_size=receivedLen, start_pos=receivedBytes, list_format="B")
                 
                 if receivedPage != pageNum:
                     raise ValueError("sent page: {}, received page: {}".format(pageNum, receivedPage))

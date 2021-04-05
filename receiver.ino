@@ -177,62 +177,70 @@ void disableDataProtect() {
 	delay(100);
 }
 
+void blink() {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(500);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+}
+
 void setup() {
 	declarePins();
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
 	Serial.begin(115200);
 	myTransfer.begin(Serial);
 	delay(10);
   	//disableDataProtect();
-    pinMode(LED_BUILTIN, OUTPUT);
-    for (int i = 0; i < 3; i++) {
-        digitalWrite(LED_BUILTIN, HIGH);
-        delay(500);
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(500);
-    }
+    for (int i = 0; i < 3; i++)
+        blink();
 }
+
+
+#define beginMessage() int numBytes = 0
+
+#define send(data) \
+    myTransfer.txObj(data, numBytes, sizeof(data));\
+    numBytes += sizeof(data);
+
+#define receive(data) \
+    myTransfer.rxObj(data, numBytes, sizeof(data));\
+    numBytes += sizeof(data);
+
+#define sendAll() myTransfer.sendData(numBytes)
 
 void loop() {
 	if (myTransfer.available()) {
-        pinMode(LED_BUILTIN, OUTPUT);
-        for (int i = 0; i < 2; i++) {
-            digitalWrite(LED_BUILTIN, HIGH);
-            delay(1000);
-            digitalWrite(LED_BUILTIN, LOW);
-            delay(1000);
-        }
-		//receive data
 		Data data;
-		int receivedBytes = 0;
-		myTransfer.rxObj(data.instruction, sizeof(data.instruction), receivedBytes);
-		receivedBytes += sizeof(data.instruction);
-		myTransfer.rxObj(data.pageNum, sizeof(data.pageNum), receivedBytes);
-		receivedBytes += sizeof(data.pageNum);
-		myTransfer.rxObj(data.len, sizeof(data.len), receivedBytes);
-		receivedBytes += sizeof(data.len);
-		myTransfer.rxObj(data.data, data.len, receivedBytes);
-		receivedBytes += data.len;
 
-		//process data
+        beginMessage();
+		receive(data.instruction);
+		receive(data.pageNum);
+		receive(data.len);
+        receive(data.len);
+
 		if (data.instruction == 1) {
 			writePage(data);
 
-			//send return message
-			myTransfer.txObj(data.pageNum, sizeof(data.pageNum), 0);
-			myTransfer.sendData(sizeof(data.pageNum));
+			beginMessage();
+            send(data.pageNum);
+            sendAll();
 
 		} else if (data.instruction == 2) {
 			readPage(data);
 
-			//send return message
-			int sendBytes = 0;
-			myTransfer.txObj(data.pageNum, sizeof(data.pageNum), sendBytes);
-			sendBytes += sizeof(data.pageNum);
-			myTransfer.txObj(data.len, sizeof(data.len), sendBytes);
-			sendBytes += sizeof(data.len);
-			myTransfer.txObj(data.data, sizeof(data.data), sendBytes);
-			sendBytes += sizeof(data.data);
-			myTransfer.sendData(sendBytes);
-		}
+			beginMessage();
+            send(data.pageNum);
+            send(data.len);
+            send(data.data);
+            myTransfer.sendData(numBytes);
+		} else {
+            blink();
+            uint32_t test = 10;
+            
+            beginMessage();
+            send(test);
+            myTransfer.sendData(numBytes);
+        }
 	}
 }
